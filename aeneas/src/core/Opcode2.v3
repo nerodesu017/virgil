@@ -326,7 +326,9 @@ component Opcodes2 {
 		t[Opcode2.RefLayoutGetField.tag] =	NONE;
 		t[Opcode2.RefLayoutAtRepeatedField.tag] = P|M;
 	}
-	def facts(opcode: Opcode2) -> Fact.set { return table[opcode.tag]; }
+	def facts(opcode: Opcode2) -> Fact.set {
+		return table[opcode.tag];
+	}
 	def checkOpenness(opcode: Opcode2) -> Open {
 		if (table[opcode.tag].O_MONOMORPHIC) return Open.CLOSED;
 		var open = Open.OPEN;
@@ -408,9 +410,97 @@ component Opcodes2 {
 		}
 		return open;
 	}
-	def isOpenType(t: Type) -> Open;
-	def isOpenTypes(t: Range<Type>) -> Open;
+	def subst(opcode: Opcode2, func: Type -> Type) -> Opcode2 {
+		match (opcode) {
+			RefEq(t) =>				return Opcode2.RefEq(func(t));
+			TupleCreate(t, length) => 		return Opcode2.TupleCreate(TupleType.!(func(t)), length);
+			TupleGetElem(t, index) => 		return Opcode2.TupleGetElem(TupleType.!(func(t)), index);
+			ArrayAlloc(t) =>			return Opcode2.ArrayAlloc(ArrayType.!(func(t)));
+			ArrayInit(t, length) =>			return Opcode2.ArrayInit(ArrayType.!(func(t)), length);
+			ArrayTupleInit(t, elems, length) => 	return Opcode2.ArrayTupleInit(ArrayType.!(func(t)), elems, length);
+			ArrayGetElem(t, it) =>			return Opcode2.ArrayGetElem(ArrayType.!(func(t)), it);
+			ArraySetElem(t, it) =>			return Opcode2.ArraySetElem(ArrayType.!(func(t)), it);
+			ArrayGetElemElem(t, it, index) => 	return Opcode2.ArrayGetElemElem(ArrayType.!(func(t)), it, index);
+			ArraySetElemElem(t, it, index) => 	return Opcode2.ArraySetElemElem(ArrayType.!(func(t)), it, index);
+			ArrayGetLength(t) =>			return Opcode2.ArrayGetLength(ArrayType.!(func(t)));
+			RangeFromTo(t) =>			return Opcode2.RangeFromTo(RangeType.!(func(t)));
+			RangeFromPlus(t) =>			return Opcode2.RangeFromPlus(RangeType.!(func(t)));
+			RangeGetElem(t, it) =>			return Opcode2.RangeGetElem(RangeType.!(func(t)), it);
+			RangeSetElem(t, it) =>			return Opcode2.RangeSetElem(RangeType.!(func(t)), it);
+			RangeGetLength(t) =>			return Opcode2.RangeGetLength(RangeType.!(func(t)));
+			RangeStartPlusIndex(t, it) =>		return Opcode2.RangeStartPlusIndex(RangeType.!(func(t)), it);
+			RangeStartFromPointer(t, pt) =>		return Opcode2.RangeStartFromPointer(RangeType.!(func(t)), pt);
+			NormRangeGetElem(t, it) =>		return Opcode2.NormRangeGetElem(RangeType.!(func(t)), it);
+			NormRangeGetElemElem(t, index, it) =>	return Opcode2.NormRangeGetElemElem(RangeType.!(func(t)), index, it);
+			NormRangeSetElem(t, it) =>		return Opcode2.NormRangeSetElem(RangeType.!(func(t)), it);
+			NormRangeSetElemElem(t, index, it) =>	return Opcode2.NormRangeSetElemElem(RangeType.!(func(t)), index, it);
+			ClassAlloc(spec) => 			return Opcode2.ClassAlloc(substSpec(spec, func));
+			ClassGetField(spec) => 			return Opcode2.ClassGetField(substSpec(spec, func));
+			ClassInitField(spec) =>			return Opcode2.ClassInitField(substSpec(spec, func));
+			ClassSetField(spec) => 			return Opcode2.ClassSetField(substSpec(spec, func));
+			ClassGetMethod(spec) =>			return Opcode2.ClassGetMethod(substSpec(spec, func));
+			ClassGetVirtual(spec) => 		return Opcode2.ClassGetVirtual(substSpec(spec, func));
+			ClassGetSelector(spec) => 		return Opcode2.ClassGetSelector(substSpec(spec, func));
+			VariantEq(t) =>				return Opcode2.VariantEq(ClassType.!(func(t)));
+			VariantGetTag(t) =>			return Opcode2.VariantGetTag(ClassType.!(func(t)));
+			VariantGetField(spec) => 		return Opcode2.VariantGetField(substSpec(spec, func));
+			VariantGetMethod(spec) => 		return Opcode2.VariantGetMethod(substSpec(spec, func));
+			VariantGetVirtual(spec) => 		return Opcode2.VariantGetVirtual(substSpec(spec, func));
+			VariantGetSelector(spec) => 		return Opcode2.VariantGetSelector(substSpec(spec, func));
+			NullCheck(t) =>				return Opcode2.NullCheck(func(t));
+			BoundsCheck(t) =>			return Opcode2.BoundsCheck(func(t));
+			OverloadedEq(t) =>			return Opcode2.OverloadedEq(func(t));
+			TypeCast(cast, to, from) =>		return Opcode2.TypeCast(cast, func(to), func(from));
+			TypeQuery(query, to, from) =>		return Opcode2.TypeQuery(query, func(to), func(from));
+			TypeSubsume(to, from) =>		return Opcode2.TypeSubsume(func(to), func(from));
+			CallMethod(spec) => 			return Opcode2.CallMethod(substSpec(spec, func));
+			CallClassMethod(spec) => 		return Opcode2.CallClassMethod(substSpec(spec, func));
+			CallClassVirtual(spec) => 		return Opcode2.CallClassVirtual(substSpec(spec, func));
+			CallClassSelector(spec) => 		return Opcode2.CallClassSelector(substSpec(spec, func));
+			CallVariantVirtual(spec) => 		return Opcode2.CallVariantVirtual(substSpec(spec, func));
+			CallVariantSelector(spec) => 		return Opcode2.CallVariantSelector(substSpec(spec, func));
+			CallClosure(t) => 			return Opcode2.CallClosure(FuncType.!(func(t)));
+			CallFunction(t) => 			return Opcode2.CallFunction(FuncType.!(func(t)));
+			CreateClosure(obj, method) => 		return Opcode2.CreateClosure(func(obj), substSpec(method, func));
+			ForgeClosure(ptrType, closureType, paramType, resultType) => 	return Opcode2.ForgeClosure(ptrType, func(closureType), func(paramType), func(resultType));
+			UnpackClosure(ptrType, closureType, paramType, resultType) => 	return Opcode2.UnpackClosure(ptrType, func(closureType), func(paramType), func(resultType));
+			RefLayoutGetField(t, offset, ft) =>				return Opcode2.RefLayoutGetField(t, offset, func(ft));
+			RefLayoutSetField(t, offset, ft) =>				return Opcode2.RefLayoutSetField(t, offset, func(ft));
+			RefLayoutGetRepeatedField(t, offset, scale, max, ft) =>		return Opcode2.RefLayoutGetRepeatedField(t, offset, scale, max, func(ft));
+			RefLayoutSetRepeatedField(t, offset, scale, max, ft) =>		return Opcode2.RefLayoutSetRepeatedField(t, offset, scale, max, func(ft));
+			ByteArrayGetField(st, offset, ft) =>				return Opcode2.ByteArrayGetField(st, offset, func(ft));
+			ByteArraySetField(st, offset, ft) =>				return Opcode2.ByteArraySetField(st, offset, func(ft));
+			ForgeRange(ptrType, t) => 					return Opcode2.ForgeRange(ptrType, RangeType.!(func(t)));
+			SystemCall(syscall, paramType, resultType) =>			return Opcode2.SystemCall(syscall, func(paramType), func(resultType));
+			VstSugar(op, paramType, resultType) =>				return Opcode2.VstSugar(op, func(paramType), func(resultType));
+			PtrAtContents(t, at) =>						return Opcode2.PtrAtContents(t, func(at));
+			PtrAtLength(t, arrayType) =>					return Opcode2.PtrAtLength(t, ArrayType.!(func(arrayType)));
+			PtrAtObject(t, objType) =>					return Opcode2.PtrAtObject(t, func(objType));
+			PtrAtEnd(t, objType) =>						return Opcode2.PtrAtEnd(t, func(objType));
+			PtrAtObjectField(t, field) =>					return Opcode2.PtrAtObjectField(t, substSpec(field, func));
+			PtrAtRefLayoutField(refType, t, offset) =>			return Opcode2.PtrAtRefLayoutField(refType, t, offset);
+			PtrCmpSwp(t, valType) =>					return Opcode2.PtrCmpSwp(t, func(valType));
+			PtrLoad(t, valType) =>						return Opcode2.PtrLoad(t, func(valType));
+			PtrStore(t, valType) =>						return Opcode2.PtrStore(t, func(valType));
+			Alloc(t) =>							return Opcode2.Alloc(func(t));
+			CallAddress(p, rep) => 						return opcode; // TODO
+			CallKernel(kernel, paramType, resultType) => 			return Opcode2.CallKernel(kernel, func(paramType), func(resultType));
+			_ => return opcode;
+		}
+	}
+	def isOpenType(t: Type) -> Open {
+		return if(t.open(), Open.OPEN, Open.CLOSED);
+	}
+	def isOpenTypes(types: Range<Type>) -> Open {
+		for (t in types) if (t.open()) return Open.OPEN;
+		return Open.CLOSED;
+	}
 	def isOpenSpec(spec: IrSpec) -> Open;
-	def isOpenTypeOrSpec(t: Type, spec: IrSpec) -> Open;
-	def isOpenType2(t1: Type, t2: Type) -> Open;
+	def isOpenTypeOrSpec(t: Type, spec: IrSpec) -> Open {
+		return if(t.open(), Open.OPEN, isOpenSpec(spec));
+	}
+	def isOpenType2(t1: Type, t2: Type) -> Open {
+		return if(t1.open() || t2.open(), Open.OPEN, Open.CLOSED);
+	}
+	def substSpec(spec: IrSpec, func: Type -> Type) -> IrSpec;
 }

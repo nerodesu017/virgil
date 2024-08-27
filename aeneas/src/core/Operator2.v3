@@ -25,10 +25,10 @@ class Operator2(opcode: Opcode2) {
 		return computeTypes().resultTypes;
 	}
 	def subst(func: Type -> Type) -> Operator2 {
-		return this;
+		if (checkOpenness() == Open.CLOSED) return this;
+		return Operator2.new(Opcodes2.subst(opcode, func));
 	}
 	def checkOpenness() -> Open {
-		// openness is not known. check all type args and operator type
 		if (openness != Open.UNKNOWN) return openness;
 		return openness = Opcodes2.checkOpenness(opcode);
 	}
