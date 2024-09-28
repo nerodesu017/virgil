@@ -21,6 +21,7 @@ enum SystemCall(eval: (SystemCallState, Arguments) -> Result, paramTypes: Array<
 	ticksMs(	SystemCallState.ticksMs,	TypeUtil.NO_TYPES, Int.TYPE),
 	ticksUs(	SystemCallState.ticksUs,	TypeUtil.NO_TYPES, Int.TYPE),
 	ticksNs(	SystemCallState.ticksNs,	TypeUtil.NO_TYPES, Int.TYPE),
+	fooBar(		SystemCallState.fooBar,		TypeUtil.NO_TYPES, Void.TYPE),
 }
 
 // Representation of the "System" component which provides system calls
@@ -43,6 +44,9 @@ class SystemCallState {
 
 	new() { clear(); }
 
+	def fooBar(args: Arguments) -> Result {
+		return Values.BOTTOM;
+	}
 	// @System.chmod
 	def chmod(args: Arguments) -> Result {
 		System.chmod(args.s(0), args.i(1));

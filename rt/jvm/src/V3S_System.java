@@ -26,6 +26,10 @@ public class V3S_System {
 	fileOutput[2] = System.err;
     }
 
+    public static void fooBar() {
+        System.out.println("fooBar");
+    }
+
     public static void putc(char ch) {
         System.out.print((char) ch);
     }
